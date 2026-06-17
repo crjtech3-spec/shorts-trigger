@@ -21,7 +21,7 @@
   button:disabled { opacity:.5; }
   .card { background:#161b22; border:1px solid #30363d; border-radius:14px; padding:16px; margin:14px 0; }
   label { font-size:.8rem; color:#8b949e; display:block; margin-bottom:6px; }
-  input { width:100%; padding:12px; border-radius:10px; border:1px solid #30363d;
+  input, select { width:100%; padding:12px; border-radius:10px; border:1px solid #30363d;
           background:#0d1117; color:#e6edf3; font-size:.95rem; }
   .row { display:flex; gap:8px; align-items:center; }
   .small { font-size:.8rem; color:#8b949e; }
@@ -36,6 +36,23 @@
 </head>
 <body>
   <h1><img class="logo" src="icon-192.png" alt=""> Shorts Trigger</h1>
+
+  <div class="card" style="margin-top:0">
+    <label>Facts topic category (manual only — scheduled always auto-rotates)</label>
+    <select id="category" onchange="save()">
+      <option value="auto">🎲 Auto (rotate all topics)</option>
+      <option value="animals">🐾 Animals &amp; species</option>
+      <option value="nature">🌿 Nature secrets &amp; phenomena</option>
+      <option value="geography">🗺️ Geography &amp; places</option>
+      <option value="space">🪐 Space &amp; the cosmos</option>
+      <option value="science_mystery">🔭 Science mysteries</option>
+      <option value="human_body">🧠 Human body &amp; brain</option>
+      <option value="physics">⚛️ Everyday physics &amp; chemistry</option>
+      <option value="earth">🌋 Earth, oceans &amp; weather</option>
+      <option value="archaeology">🏺 Archaeology puzzles</option>
+      <option value="plants">🍄 Plants, fungi &amp; microbes</option>
+    </select>
+  </div>
 
   <button class="facts" onclick="trigger('facts')">🔬 New Facts video</button>
   <button class="motiv" onclick="trigger('motivation')">💪 New Motivation video</button>
@@ -67,18 +84,20 @@
 <script>
 const $ = id => document.getElementById(id);
 const WF = "shorts.yml", BR = "master";
-function save(){ localStorage.token=$("token").value.trim(); localStorage.repo=$("repo").value.trim(); $("repolbl").textContent=localStorage.repo||"—"; }
-function load(){ $("token").value=localStorage.token||""; $("repo").value=localStorage.repo||"crjtech3-spec/shorts-automation"; save(); }
+function save(){ localStorage.token=$("token").value.trim(); localStorage.repo=$("repo").value.trim(); localStorage.category=$("category").value; $("repolbl").textContent=localStorage.repo||"—"; }
+function load(){ $("token").value=localStorage.token||""; $("repo").value=localStorage.repo||"crjtech3-spec/shorts-automation"; $("category").value=localStorage.category||"auto"; save(); }
 function toast(msg, err){ const t=$("toast"); t.textContent=msg; t.className="show"+(err?" err":""); setTimeout(()=>t.className="",3000); }
 function hdr(){ return { "Authorization":"Bearer "+localStorage.token, "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28" }; }
 
 async function trigger(profile){
   if(!localStorage.token){ toast("Add your token in Settings first", true); return; }
   try{
+    const category = $("category").value || "auto";
     const r = await fetch(`https://api.github.com/repos/${localStorage.repo}/actions/workflows/${WF}/dispatches`,
       { method:"POST", headers:{...hdr(),"Content-Type":"application/json"},
-        body: JSON.stringify({ ref:BR, inputs:{ profile } }) });
-    if(r.status===204){ toast("🚀 "+profile+" run started!"); setTimeout(loadRuns, 3000); }
+        body: JSON.stringify({ ref:BR, inputs:{ profile, category } }) });
+    const note = (profile!=="motivation" && category!=="auto") ? " ("+category+")" : "";
+    if(r.status===204){ toast("🚀 "+profile+note+" run started!"); setTimeout(loadRuns, 3000); }
     else { toast("Error "+r.status+": "+(await r.text()).slice(0,80), true); }
   }catch(e){ toast("Network error: "+e.message, true); }
 }
