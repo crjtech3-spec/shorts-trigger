@@ -1,5 +1,5 @@
 // Minimal service worker: caches the app shell so it installs + opens offline.
-const CACHE = "shorts-trigger-v3";
+const CACHE = "shorts-trigger-v4";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest",
                "./icon-192.png", "./icon-512.png"];
 
