@@ -66,15 +66,21 @@
       <option value="emotions">🌊 Stress &amp; emotions</option>
       <option value="relationships">🤝 Communication &amp; relationships</option>
     </select>
+    <label style="margin-top:12px">Video format</label>
+    <select id="format" onchange="save()">
+      <option value="shorts">📱 Short (9:16, ~45s)</option>
+      <option value="long">🎬 Long video (16:9, ~2-3 min)</option>
+    </select>
     <label style="margin-top:12px;display:flex;align-items:center;gap:10px;cursor:pointer">
       <input type="checkbox" id="trending" onchange="save()"
              style="width:auto;transform:scale(1.3)">
       <span>🗞️ Latest trending news / research (reputable sources only)</span>
     </label>
     <p class="small" style="margin:6px 0 0">
-      Off = timeless facts &amp; proven techniques. On = recent items from outlets like
-      Nature, NASA, BBC, Reuters, APA; still fact-checked, with the source linked in
-      the description. Applies to both channels.
+      Trending off = timeless facts &amp; proven techniques. On = recent items from
+      outlets like Nature, NASA, BBC, Reuters, APA; still fact-checked, with the source
+      linked in the description. Long videos are 16:9 ~2-3 min (grounded in the real
+      source article). Applies to both channels.
     </p>
   </div>
 
@@ -108,8 +114,8 @@
 <script>
 const $ = id => document.getElementById(id);
 const WF = "shorts.yml", BR = "master";
-function save(){ localStorage.token=$("token").value.trim(); localStorage.repo=$("repo").value.trim(); localStorage.category=$("category").value; localStorage.growth_pillar=$("growth_pillar").value; localStorage.trending=$("trending").checked?"1":""; $("repolbl").textContent=localStorage.repo||"—"; }
-function load(){ $("token").value=localStorage.token||""; $("repo").value=localStorage.repo||"crjtech3-spec/shorts-automation"; $("category").value=localStorage.category||"auto"; $("growth_pillar").value=localStorage.growth_pillar||"auto"; $("trending").checked=localStorage.trending==="1"; save(); }
+function save(){ localStorage.token=$("token").value.trim(); localStorage.repo=$("repo").value.trim(); localStorage.category=$("category").value; localStorage.growth_pillar=$("growth_pillar").value; localStorage.trending=$("trending").checked?"1":""; localStorage.format=$("format").value; $("repolbl").textContent=localStorage.repo||"—"; }
+function load(){ $("token").value=localStorage.token||""; $("repo").value=localStorage.repo||"crjtech3-spec/shorts-automation"; $("category").value=localStorage.category||"auto"; $("growth_pillar").value=localStorage.growth_pillar||"auto"; $("trending").checked=localStorage.trending==="1"; $("format").value=localStorage.format||"shorts"; save(); }
 function toast(msg, err){ const t=$("toast"); t.textContent=msg; t.className="show"+(err?" err":""); setTimeout(()=>t.className="",3000); }
 function hdr(){ return { "Authorization":"Bearer "+localStorage.token, "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28" }; }
 
@@ -119,13 +125,15 @@ async function trigger(profile){
     const category = $("category").value || "auto";
     const growth_pillar = $("growth_pillar").value || "auto";
     const mode = $("trending").checked ? "trending" : "evergreen";
+    const format = $("format").value || "shorts";
     const r = await fetch(`https://api.github.com/repos/${localStorage.repo}/actions/workflows/${WF}/dispatches`,
       { method:"POST", headers:{...hdr(),"Content-Type":"application/json"},
-        body: JSON.stringify({ ref:BR, inputs:{ profile, category, mode, growth_pillar } }) });
+        body: JSON.stringify({ ref:BR, inputs:{ profile, category, mode, growth_pillar, format } }) });
     let note = "";
     if(profile!=="motivation" && category!=="auto") note += " ("+category+")";
     if(profile!=="facts" && growth_pillar!=="auto") note += " ["+growth_pillar+"]";
     if(mode==="trending") note += " 🗞️trending";
+    if(format==="long") note += " 🎬long";
     if(r.status===204){ toast("🚀 "+profile+note+" run started!"); setTimeout(loadRuns, 3000); }
     else { toast("Error "+r.status+": "+(await r.text()).slice(0,80), true); }
   }catch(e){ toast("Network error: "+e.message, true); }
