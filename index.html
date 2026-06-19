@@ -89,6 +89,19 @@
   <button class="both"  onclick="trigger('both')">⚡ Both channels</button>
 
   <div class="card">
+    <strong style="font-size:.95rem">🎬 Repurpose a top short → long deep-dive</strong>
+    <p class="small" style="margin:6px 0 10px">
+      Pick a high-performing short to expand into a 16:9 ~2-3 min video (bypasses the
+      no-repeat guard). Needs a YouTube Data API key in Settings.
+    </p>
+    <div class="row">
+      <button style="margin:0;background:#1f6feb" onclick="loadTop('facts')">Top Facts shorts</button>
+      <button style="margin:0;background:#8957e5" onclick="loadTop('motivation')">Top Growth shorts</button>
+    </div>
+    <div id="top" class="runs" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
     <div class="row" style="justify-content:space-between">
       <strong style="font-size:.95rem">Recent runs</strong>
       <button style="width:auto;padding:8px 14px;margin:0;background:#21262d" onclick="loadRuns()">↻</button>
@@ -106,6 +119,12 @@
       </p>
       <label style="margin-top:10px">Owner/repo</label>
       <input id="repo" oninput="save()" placeholder="owner/repo">
+      <label style="margin-top:10px">YouTube Data API key (for the top-shorts list)</label>
+      <input id="ytkey" type="password" oninput="save()" placeholder="AIza...">
+      <p class="small" style="margin:10px 0 0">
+        Create a free key in Google Cloud Console → APIs &amp; Services → Credentials
+        (enable "YouTube Data API v3"). Reads public view counts only; stored on this device.
+      </p>
     </div>
   </details>
 
@@ -114,8 +133,61 @@
 <script>
 const $ = id => document.getElementById(id);
 const WF = "shorts.yml", BR = "master";
-function save(){ localStorage.token=$("token").value.trim(); localStorage.repo=$("repo").value.trim(); localStorage.category=$("category").value; localStorage.growth_pillar=$("growth_pillar").value; localStorage.trending=$("trending").checked?"1":""; localStorage.format=$("format").value; $("repolbl").textContent=localStorage.repo||"—"; }
-function load(){ $("token").value=localStorage.token||""; $("repo").value=localStorage.repo||"crjtech3-spec/shorts-automation"; $("category").value=localStorage.category||"auto"; $("growth_pillar").value=localStorage.growth_pillar||"auto"; $("trending").checked=localStorage.trending==="1"; $("format").value=localStorage.format||"shorts"; save(); }
+function save(){ localStorage.token=$("token").value.trim(); localStorage.repo=$("repo").value.trim(); localStorage.category=$("category").value; localStorage.growth_pillar=$("growth_pillar").value; localStorage.trending=$("trending").checked?"1":""; localStorage.format=$("format").value; localStorage.ytkey=$("ytkey").value.trim(); $("repolbl").textContent=localStorage.repo||"—"; }
+function load(){ $("token").value=localStorage.token||""; $("repo").value=localStorage.repo||"crjtech3-spec/shorts-automation"; $("category").value=localStorage.category||"auto"; $("growth_pillar").value=localStorage.growth_pillar||"auto"; $("trending").checked=localStorage.trending==="1"; $("format").value=localStorage.format||"shorts"; $("ytkey").value=localStorage.ytkey||""; save(); }
+
+// Channel uploads playlists (for the YouTube Data API, public read with an API key).
+const UPLOADS = { facts:"UUc1T6ue6KHZ4QpK9LO2zoZA", motivation:"UU58kUeCcqZL6wGVLUS9LjTQ" };
+const _dur = s => { const m=(s||"").match(/PT(?:(\d+)M)?(?:(\d+)S)?/)||[]; return (+(m[1]||0))*60+(+(m[2]||0)); };
+
+async function loadTop(profile){
+  const key = localStorage.ytkey;
+  if(!key){ toast("Add a YouTube Data API key in Settings first", true); return; }
+  const box = $("top"); box.innerHTML = '<div class="small">Loading…</div>';
+  try{
+    const pl = UPLOADS[profile];
+    let ids = [], pageToken = "";
+    do {
+      const r = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&maxResults=50&playlistId=${pl}&key=${key}`+(pageToken?`&pageToken=${pageToken}`:""));
+      const d = await r.json();
+      if(d.error){ box.innerHTML='<div class="small">YT API: '+(d.error.message||"error")+'</div>'; return; }
+      ids = ids.concat((d.items||[]).map(i=>i.contentDetails.videoId));
+      pageToken = d.nextPageToken;
+    } while(pageToken && ids.length<150);
+    let vids = [];
+    for(let i=0;i<ids.length;i+=50){
+      const r = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=${ids.slice(i,i+50).join(",")}&key=${key}`);
+      const d = await r.json();
+      vids = vids.concat(d.items||[]);
+    }
+    const shorts = vids.filter(v=>_dur(v.contentDetails.duration)<=90)
+      .map(v=>({id:v.id,title:v.snippet.title,views:+(v.statistics.viewCount||0)}))
+      .sort((a,b)=>b.views-a.views).slice(0,10);
+    if(!shorts.length){ box.innerHTML='<div class="small">No shorts found.</div>'; return; }
+    _topCache = {}; shorts.forEach(s=>_topCache[s.id]=s.title);  // id->title (safe button arg)
+    const esc = t => t.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    box.innerHTML = shorts.map(s=>
+      `<div class="run"><span>👁 ${s.views.toLocaleString()} · <a href="https://youtu.be/${s.id}" target="_blank">${esc(s.title.slice(0,40))}</a></span>`+
+      `<button style="width:auto;padding:6px 10px;margin:0;background:#1f6feb" onclick="repurpose('${profile}','${s.id}')">🎬 Long</button></div>`
+    ).join("");
+  }catch(e){ box.innerHTML='<div class="small">'+e.message+'</div>'; }
+}
+
+let _topCache = {};
+async function repurpose(profile, id){
+  const title = _topCache[id];
+  if(!title){ toast("Reload the list and try again", true); return; }
+  if(!localStorage.token){ toast("Add your GitHub token in Settings first", true); return; }
+  if(!confirm("Create a LONG deep-dive video from:\n\n"+title+"\n\nThis bypasses the no-repeat guard.")) return;
+  try{
+    const r = await fetch(`https://api.github.com/repos/${localStorage.repo}/actions/workflows/${WF}/dispatches`,
+      { method:"POST", headers:{...hdr(),"Content-Type":"application/json"},
+        body: JSON.stringify({ ref:BR, inputs:{ profile, category:"auto", mode:"evergreen",
+          growth_pillar:"auto", format:"long", repurpose:title } }) });
+    if(r.status===204){ toast("🎬 Long deep-dive started!"); setTimeout(loadRuns,3000); }
+    else { toast("Error "+r.status+": "+(await r.text()).slice(0,80), true); }
+  }catch(e){ toast("Network error: "+e.message, true); }
+}
 function toast(msg, err){ const t=$("toast"); t.textContent=msg; t.className="show"+(err?" err":""); setTimeout(()=>t.className="",3000); }
 function hdr(){ return { "Authorization":"Bearer "+localStorage.token, "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28" }; }
 
