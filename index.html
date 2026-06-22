@@ -109,6 +109,18 @@
     <div id="runs" class="runs"><div class="small">Add your token below, then refresh.</div></div>
   </div>
 
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <strong style="font-size:.95rem">📥 9:16 thumbnails (upload in Studio)</strong>
+      <button style="width:auto;padding:8px 14px;margin:0;background:#21262d" onclick="loadCovers()">↻</button>
+    </div>
+    <p class="small" style="margin:6px 0 8px">
+      YouTube only shows the 16:9 thumbnail via API. For a true native Shorts thumbnail,
+      download a 9:16 cover here and set it manually in Studio (Content → the Short → Edit).
+    </p>
+    <div id="covers" class="runs"><div class="small">Tap ↻ to load recent 9:16 covers.</div></div>
+  </div>
+
   <details class="card">
     <summary>⚙️ Settings (GitHub token)</summary>
     <div style="margin-top:12px">
@@ -225,7 +237,25 @@ async function loadRuns(){
   }catch(e){ $("runs").innerHTML='<div class="small">'+e.message+'</div>'; }
 }
 
-load(); loadRuns();
+async function loadCovers(){
+  if(!localStorage.token){ toast("Add your token in Settings first", true); return; }
+  const box=$("covers"); box.innerHTML='<div class="small">Loading…</div>';
+  try{
+    const r=await fetch(`https://api.github.com/repos/${localStorage.repo}/contents/covers.json`,
+      { headers:{...hdr(), "Accept":"application/vnd.github.raw"} });
+    if(r.status===404){ box.innerHTML='<div class="small">No covers yet (run a Short first).</div>'; return; }
+    if(!r.ok){ box.innerHTML='<div class="small">Error '+r.status+'</div>'; return; }
+    const data=await r.json();
+    const esc=t=>(t||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    box.innerHTML = (data.slice().reverse().map(c=>
+      `<div class="run"><span>${esc(c.title.slice(0,32))}</span>`+
+      `<a href="${c.url}" target="_blank" rel="noopener" download `+
+      `style="width:auto;padding:6px 12px;margin:0;background:#238636;border-radius:8px;color:#fff;text-decoration:none;font-size:.85rem">⬇ 9:16</a></div>`
+    ).join("")) || '<div class="small">No covers yet.</div>';
+  }catch(e){ box.innerHTML='<div class="small">'+e.message+'</div>'; }
+}
+
+load(); loadRuns(); loadCovers();
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js"); }
 </script>
 </body>
