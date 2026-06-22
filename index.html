@@ -243,7 +243,8 @@ async function loadCovers(){
   try{
     const r=await fetch(`https://api.github.com/repos/${localStorage.repo}/contents/covers.json`,
       { headers:{...hdr(), "Accept":"application/vnd.github.raw"} });
-    if(r.status===404){ box.innerHTML='<div class="small">No covers yet (run a Short first).</div>'; return; }
+    if(r.status===404){ box.innerHTML='<div class="small">No covers yet — run a Short first, then tap ↻.</div>'; return; }
+    if(r.status===403||r.status===401){ box.innerHTML='<div class="small">Token can\'t read files ('+r.status+'). Give your GitHub token <b>Contents: Read</b> (fine-grained) or use a classic token with <b>repo</b> scope, then re-save it in ⚙️ Settings.</div>'; return; }
     if(!r.ok){ box.innerHTML='<div class="small">Error '+r.status+'</div>'; return; }
     const data=await r.json();
     const esc=t=>(t||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
