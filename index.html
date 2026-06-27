@@ -85,8 +85,6 @@
   </div>
 
   <button class="facts" onclick="trigger('facts')">🔬 New Facts video</button>
-  <button class="motiv" onclick="trigger('motivation')">💪 New Motivation video</button>
-  <button class="both"  onclick="trigger('both')">⚡ Both channels</button>
 
   <div class="card">
     <strong style="font-size:.95rem">🎬 Repurpose a top short → long deep-dive</strong>
@@ -96,7 +94,6 @@
     </p>
     <div class="row">
       <button style="margin:0;background:#1f6feb" onclick="loadTop('facts')">Top Facts shorts</button>
-      <button style="margin:0;background:#8957e5" onclick="loadTop('motivation')">Top Growth shorts</button>
     </div>
     <div id="top" class="runs" style="margin-top:10px"></div>
   </div>
@@ -146,7 +143,7 @@
 const $ = id => document.getElementById(id);
 const WF = "shorts.yml", BR = "master";
 function save(){ localStorage.token=$("token").value.trim(); localStorage.repo=$("repo").value.trim(); localStorage.category=$("category").value; localStorage.growth_pillar=$("growth_pillar").value; localStorage.trending=$("trending").checked?"1":""; localStorage.format=$("format").value; localStorage.ytkey=$("ytkey").value.trim(); $("repolbl").textContent=localStorage.repo||"—"; }
-function load(){ $("token").value=localStorage.token||""; $("repo").value=localStorage.repo||"crjtech3-spec/shorts-automation"; $("category").value=localStorage.category||"auto"; $("growth_pillar").value=localStorage.growth_pillar||"auto"; $("trending").checked=localStorage.trending==="1"; $("format").value=localStorage.format||"shorts"; $("ytkey").value=localStorage.ytkey||""; save(); }
+function load(){ $("token").value=localStorage.token||""; $("repo").value=localStorage.repo||"Arvcrj/shorts-automation"; $("category").value=localStorage.category||"auto"; $("growth_pillar").value=localStorage.growth_pillar||"auto"; $("trending").checked=localStorage.trending==="1"; $("format").value=localStorage.format||"shorts"; $("ytkey").value=localStorage.ytkey||""; save(); }
 
 // Channel uploads playlists (for the YouTube Data API, public read with an API key).
 const UPLOADS = { facts:"UUc1T6ue6KHZ4QpK9LO2zoZA", motivation:"UU58kUeCcqZL6wGVLUS9LjTQ" };
