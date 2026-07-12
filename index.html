@@ -247,10 +247,31 @@ async function loadCovers(){
     const esc=t=>(t||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
     box.innerHTML = (data.slice().reverse().map(c=>
       `<div class="run"><span>${esc(c.title.slice(0,32))}</span>`+
-      `<a href="${c.url}" target="_blank" rel="noopener" download `+
-      `style="width:auto;padding:6px 12px;margin:0;background:#238636;border-radius:8px;color:#fff;text-decoration:none;font-size:.85rem">⬇ 9:16</a></div>`
+      (c.url && c.video_id ?
+        `<button onclick="dlCover('${(c.video_id||"").replace(/[^\w-]/g,"")}')" `+
+        `style="width:auto;padding:6px 12px;margin:0;background:#238636;border:0;border-radius:8px;color:#fff;font-size:.85rem;cursor:pointer">⬇ 9:16</button>`
+        : `<span class="small">no cover</span>`)+
+      `</div>`
     ).join("")) || '<div class="small">No covers yet.</div>';
   }catch(e){ box.innerHTML='<div class="small">'+e.message+'</div>'; }
+}
+
+// Covers live in the PRIVATE code repo, so a plain <a href> to raw.githubusercontent.com
+// always 404s (no way to attach the token to a link -- the old direct-href button never
+// worked). Fetch the jpg through the SAME authenticated Contents API used for covers.json
+// above (raw media type), then hand the browser a blob to save.
+async function dlCover(vid){
+  if(!localStorage.token){ toast("Add your token in Settings first", true); return; }
+  try{
+    const r = await fetch(`https://api.github.com/repos/${localStorage.repo}/contents/covers/${vid}.jpg`,
+      { headers:{...hdr(), "Accept":"application/vnd.github.raw"} });
+    if(!r.ok){ toast("Cover fetch failed ("+r.status+")", true); return; }
+    const u = URL.createObjectURL(await r.blob());
+    const a = document.createElement("a");
+    a.href = u; a.download = vid + ".jpg";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(u), 4000);
+  }catch(e){ toast(e.message, true); }
 }
 
 load(); loadRuns(); loadCovers();
