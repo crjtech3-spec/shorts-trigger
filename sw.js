@@ -1,5 +1,5 @@
 // Minimal service worker: caches the app shell so it installs + opens offline.
-const CACHE = "shorts-trigger-v10";
+const CACHE = "shorts-trigger-v11";   // v11: growth_pillar removed (422 fix); long -> longform.yml
 const SHELL = ["./", "./index.html", "./manifest.webmanifest",
                "./icon-192.png", "./icon-512.png"];
 

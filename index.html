@@ -52,24 +52,13 @@
       <option value="archaeology">🏺 Archaeology puzzles</option>
       <option value="plants">🍄 Plants, fungi &amp; microbes</option>
     </select>
-    <label style="margin-top:12px">Personal-growth pillar (manual only — scheduled auto-rotates)</label>
-    <select id="growth_pillar" onchange="save()">
-      <option value="auto">🎲 Auto (rotate all pillars)</option>
-      <option value="habits">🔁 Habits &amp; behavior change</option>
-      <option value="focus">🎯 Focus &amp; deep work</option>
-      <option value="discipline">🛡️ Discipline &amp; lasting motivation</option>
-      <option value="confidence">💪 Confidence &amp; resilience</option>
-      <option value="learning">📚 Learning faster</option>
-      <option value="productivity">⚡ Productivity without burnout</option>
-      <option value="mindset">🧠 Mindset &amp; self-talk</option>
-      <option value="energy">😴 Sleep, energy &amp; routines</option>
-      <option value="emotions">🌊 Stress &amp; emotions</option>
-      <option value="relationships">🤝 Communication &amp; relationships</option>
-    </select>
+    <!-- Personal-growth pillar selector REMOVED 2026-07-18: the motivation channel is
+         retired and shorts.yml dropped the growth_pillar input -- sending it caused
+         "Error 422: Unexpected inputs provided". -->
     <label style="margin-top:12px">Video format</label>
     <select id="format" onchange="save()">
       <option value="shorts">📱 Short (9:16, ~45s)</option>
-      <option value="long">🎬 Long video (16:9, ~2-3 min)</option>
+      <option value="long">🎬 Long deep-dive (16:9 weekly workflow, auto best-of)</option>
     </select>
     <label style="margin-top:12px;display:flex;align-items:center;gap:10px;cursor:pointer">
       <input type="checkbox" id="trending" onchange="save()"
@@ -79,8 +68,8 @@
     <p class="small" style="margin:6px 0 0">
       Trending off = timeless facts &amp; proven techniques. On = recent items from
       outlets like Nature, NASA, BBC, Reuters, APA; still fact-checked, with the source
-      linked in the description. Long videos are 16:9 ~2-3 min (grounded in the real
-      source article). Applies to both channels.
+      linked in the description. Long = the weekly 16:9 deep-dive workflow (expands a
+      proven past winner; category/trending don't apply to it).
     </p>
   </div>
 
@@ -142,8 +131,8 @@
 <script>
 const $ = id => document.getElementById(id);
 const WF = "shorts.yml", BR = "master";
-function save(){ localStorage.token=$("token").value.trim(); localStorage.repo=$("repo").value.trim(); localStorage.category=$("category").value; localStorage.growth_pillar=$("growth_pillar").value; localStorage.trending=$("trending").checked?"1":""; localStorage.format=$("format").value; localStorage.ytkey=$("ytkey").value.trim(); $("repolbl").textContent=localStorage.repo||"—"; }
-function load(){ $("token").value=localStorage.token||""; $("repo").value=localStorage.repo||"Arvcrj/shorts-automation"; $("category").value=localStorage.category||"auto"; $("growth_pillar").value=localStorage.growth_pillar||"auto"; $("trending").checked=localStorage.trending==="1"; $("format").value=localStorage.format||"shorts"; $("ytkey").value=localStorage.ytkey||""; save(); }
+function save(){ localStorage.token=$("token").value.trim(); localStorage.repo=$("repo").value.trim(); localStorage.category=$("category").value; localStorage.trending=$("trending").checked?"1":""; localStorage.format=$("format").value; localStorage.ytkey=$("ytkey").value.trim(); $("repolbl").textContent=localStorage.repo||"—"; }
+function load(){ $("token").value=localStorage.token||""; $("repo").value=localStorage.repo||"Arvcrj/shorts-automation"; $("category").value=localStorage.category||"auto"; $("trending").checked=localStorage.trending==="1"; $("format").value=localStorage.format||"shorts"; $("ytkey").value=localStorage.ytkey||""; save(); }
 
 // Channel uploads playlists (for the YouTube Data API, public read with an API key).
 const UPLOADS = { facts:"UUc1T6ue6KHZ4QpK9LO2zoZA", motivation:"UU58kUeCcqZL6wGVLUS9LjTQ" };
@@ -189,10 +178,11 @@ async function repurpose(profile, id){
   if(!localStorage.token){ toast("Add your GitHub token in Settings first", true); return; }
   if(!confirm("Create a LONG deep-dive video from:\n\n"+title+"\n\nThis bypasses the no-repeat guard.")) return;
   try{
-    const r = await fetch(`https://api.github.com/repos/${localStorage.repo}/actions/workflows/${WF}/dispatches`,
+    // Long-form runs its OWN workflow since the 2026-07 revival -- shorts.yml no longer
+    // accepts long/repurpose inputs (sending them = 422 Unexpected inputs).
+    const r = await fetch(`https://api.github.com/repos/${localStorage.repo}/actions/workflows/longform.yml/dispatches`,
       { method:"POST", headers:{...hdr(),"Content-Type":"application/json"},
-        body: JSON.stringify({ ref:BR, inputs:{ profile, category:"auto", mode:"evergreen",
-          growth_pillar:"auto", format:"long", repurpose:title } }) });
+        body: JSON.stringify({ ref:BR, inputs:{ repurpose:title } }) });
     if(r.status===204){ toast("🎬 Long deep-dive started!"); setTimeout(loadRuns,3000); }
     else { toast("Error "+r.status+": "+(await r.text()).slice(0,80), true); }
   }catch(e){ toast("Network error: "+e.message, true); }
@@ -204,17 +194,23 @@ async function trigger(profile){
   if(!localStorage.token){ toast("Add your token in Settings first", true); return; }
   try{
     const category = $("category").value || "auto";
-    const growth_pillar = $("growth_pillar").value || "auto";
     const mode = $("trending").checked ? "trending" : "evergreen";
     const format = $("format").value || "shorts";
+    if(format === "long"){
+      // Long deep-dive = the dedicated weekly workflow (blank repurpose -> auto best-of).
+      const r = await fetch(`https://api.github.com/repos/${localStorage.repo}/actions/workflows/longform.yml/dispatches`,
+        { method:"POST", headers:{...hdr(),"Content-Type":"application/json"},
+          body: JSON.stringify({ ref:BR, inputs:{} }) });
+      if(r.status===204){ toast("🎬 long deep-dive run started!"); setTimeout(loadRuns, 3000); }
+      else { toast("Error "+r.status+": "+(await r.text()).slice(0,80), true); }
+      return;
+    }
     const r = await fetch(`https://api.github.com/repos/${localStorage.repo}/actions/workflows/${WF}/dispatches`,
       { method:"POST", headers:{...hdr(),"Content-Type":"application/json"},
-        body: JSON.stringify({ ref:BR, inputs:{ profile, category, mode, growth_pillar, format } }) });
+        body: JSON.stringify({ ref:BR, inputs:{ profile, category, mode, format } }) });
     let note = "";
-    if(profile!=="motivation" && category!=="auto") note += " ("+category+")";
-    if(profile!=="facts" && growth_pillar!=="auto") note += " ["+growth_pillar+"]";
+    if(category!=="auto") note += " ("+category+")";
     if(mode==="trending") note += " 🗞️trending";
-    if(format==="long") note += " 🎬long";
     if(r.status===204){ toast("🚀 "+profile+note+" run started!"); setTimeout(loadRuns, 3000); }
     else { toast("Error "+r.status+": "+(await r.text()).slice(0,80), true); }
   }catch(e){ toast("Network error: "+e.message, true); }
